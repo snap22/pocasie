@@ -16,6 +16,7 @@
 # %% {"init_cell": true}
 from pyowm.owm import OWM
 import pickle
+from datetime import datetime
 
 # %% {"init_cell": true}
 Stanice = pickle.load(open('stanice.pickle', 'rb'))  # 159 stanic
@@ -30,9 +31,10 @@ mgr = owm.weather_manager()
 def weather_record(one_dict):
     wdict = {p: one_dict[p] for p in wkeys}
     wdict['wind'] = wdict['wind']['speed']
+    wdict['rain'] = list(wdict['rain'].values())[0] if wdict['rain'] else 0
     wdict['pressure'] = wdict['pressure']['press']
     temp = wdict['temperature']
-    wdict['temperature'] = temp.get('temp',{p: temp[p] for p in tempkeys})
+    wdict['temperature'] = temp['temp'] if 'temp' in temp.keys() else {p: temp[p] for p in tempkeys}
     return wdict
 
 
@@ -46,7 +48,7 @@ def get_current(one_call):
 def wlist_to_dict(wlist):
     wdict = {}
     for p in wlist:
-        wdict[p.ref_time] = weather_record(p.to_dict())
+        wdict[datetime.fromtimestamp(p.ref_time)] = weather_record(p.to_dict())
     return wdict
 
 
@@ -63,16 +65,10 @@ def get_daily(one_call):
 
 
 # %%
-what_func = {'current': get_current, '48h': get_hourly, '8d': get_daily}
-
-
-# %%
-def weather_data(city,what='48h',exclude='minutely'):
+def weather_data(city,exclude='minutely'):
     latc, lonc = Stanice[city]
     one_call = mgr.one_call(lat=latc, lon=lonc, units='metric',exclude=exclude)
-    return what_func[what](one_call)
+    return get_current(one_call), get_hourly(one_call), get_daily(one_call)
 
 # %%
-# martin_curr = weather_data('Martin',what='current')
-# martin_hourly = weather_data('Martin',what='48h')
-# martin_daily = weather_data('Martin',what='8d')
+# martin_current, martin_hourly, martin_daily = weather_data('Martin')
