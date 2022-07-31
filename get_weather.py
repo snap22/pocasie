@@ -17,12 +17,13 @@
 from pyowm.owm import OWM
 import pickle
 from datetime import datetime
+import pandas as pd
 
 # %% {"init_cell": true}
 Stanice = pickle.load(open('stanice.pickle', 'rb'))  # 159 stanic
 owkey = 'your_openweathermap_apikey'
-wkeys = ('clouds', 'rain', 'wind', 'humidity', 'pressure', 'temperature')
-tempkeys = ('day','night','min','max')
+wkeys = ['clouds', 'rain', 'wind', 'humidity', 'pressure', 'temperature']
+tempkeys = ['day','night','min','max','eve', 'morn']
 owm = OWM(owkey)
 mgr = owm.weather_manager()
 
@@ -34,7 +35,12 @@ def weather_record(one_dict):
     wdict['rain'] = list(wdict['rain'].values())[0] if wdict['rain'] else 0
     wdict['pressure'] = wdict['pressure']['press']
     temp = wdict['temperature']
-    wdict['temperature'] = temp['temp'] if 'temp' in temp.keys() else {p: temp[p] for p in tempkeys}
+    if 'temp' in temp.keys():
+        wdict['temperature'] = temp['temp']
+    else:
+        for p in tempkeys:
+            wdict['temp_' + p] = temp[p]
+        wdict.pop('temperature',None)    
     return wdict
 
 
@@ -65,10 +71,11 @@ def get_daily(one_call):
 
 
 # %%
-def weather_data(city,exclude='minutely'):
+def weather_data(city, exclude='minutely'):
     latc, lonc = Stanice[city]
     one_call = mgr.one_call(lat=latc, lon=lonc, units='metric',exclude=exclude)
-    return get_current(one_call), get_hourly(one_call), get_daily(one_call)
-
-# %%
-# martin_current, martin_hourly, martin_daily = weather_data('Martin')
+    current, hourly, daily = get_current(one_call), get_hourly(one_call), get_daily(one_call)
+    hourly_DF = pd.DataFrame.from_dict(hourly, orient='index', columns=wkeys)
+    daily_DF = pd.DataFrame.from_dict(daily, orient='index', 
+                                      columns=wkeys[:-1] + ['temp_' + p for p in tempkeys])
+    return current, hourly_DF, daily_DF
