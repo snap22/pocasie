@@ -16,15 +16,18 @@
 
 # %% {"init_cell": true}
 import panel as pn
+import panel.widgets as pnw
 pn.extension()
+
 import param
-from bokeh.plotting import curdoc
+from bokeh.plotting import curdoc, figure, output_notebook, show
 
 from get_weather import weather_data, Stanice
 
 # %%
-merania = ["Teplota", "Tlak", "Oblaky", "Vietor", "Zrážky", "Vlhkosť"]
-casy = ["Aktuálne počasie","Predpoveď 48 hod.","Predpoveď 8 dní"]
+merania = ["Teplota": "temperature", "Tlak": "pressure", "Oblaky": "clouds", 
+           "Vietor": "wind", "Zrážky": "rain", "Vlhkosť": "humidity"]
+casy = ["Aktuálne počasie": "current","Predpoveď 48 hod.": "48h","Predpoveď 8 dní": "8d"]
 
 
 # %%
@@ -33,7 +36,7 @@ class Predpoved(param.Parameterized):
     Co_kreslit = param.ListSelector(default=["Teplota","Vietor"], objects=merania,precedence=0.5)
     Casy_vyber = param.Selector(objects=casy,default="Predpoveď 48 hod.")
 
-    @param.depends("StanicaVyber","Co_kreslit")
+    @param.depends("StanicaVyber","Co_kreslit", "Casy_vyber")
     def view(self):
         # dorobit pre bokeh
         pass
