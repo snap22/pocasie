@@ -17,39 +17,51 @@
 # %% {"init_cell": true}
 import panel as pn
 import panel.widgets as pnw
-pn.extension()
+pn.extension('plotly')
+from plotly.subplots import make_subplots
+from functools import lru_cache
 
-import param
-from bokeh.plotting import curdoc, figure, output_notebook, show
-
-from get_weather import weather_data, Stanice
-
-# %%
-merania = ["Teplota": "temperature", "Tlak": "pressure", "Oblaky": "clouds", 
-           "Vietor": "wind", "Zrážky": "rain", "Vlhkosť": "humidity"]
-casy = ["Aktuálne počasie": "current","Predpoveď 48 hod.": "48h","Predpoveď 8 dní": "8d"]
+from get_weather import weather_data, Stanice, StaNames
+from plot_utils import weather_fig_vals
 
 
 # %%
-class Predpoved(param.Parameterized):
-    StanicaVyber = param.Selector(objects=sorted(list(Stanice.keys())))
-    Co_kreslit = param.ListSelector(default=["Teplota","Vietor"], objects=merania,precedence=0.5)
-    Casy_vyber = param.Selector(objects=casy,default="Predpoveď 48 hod.")
+@lru_cache(maxsize=20)
+def weather_cached(stanica):
+    return weather_data(stanica)
 
-    @param.depends("StanicaVyber","Co_kreslit", "Casy_vyber")
-    def view(self):
-        # dorobit pre bokeh
-        pass
 
 # %%
-PP = Predpoved(name="")
-pn.Param(PP, widgets={'Co_kreslit': pn.widgets.CheckBoxGroup})
+merania = {"Teplota": "temperature", "Tlak": "pressure", "Oblaky": "clouds", 
+           "Vietor": "wind", "Zrážky": "rain", "Vlhkosť": "humidity"}
+casy = {"Aktuálne počasie": "current","Predpoveď 48 hod.": "hourly","Predpoveď 8 dní": "daily"}
 
-prehlad = pn.Column(pn.pane.Markdown("## Predpoveď počasia na 5 dní",align='center'),PP.param,PP.view)
-prehlad[1][1].param.set_param(name="Výber meteostanice",width=200)
-prehlad[1][2].param.set_param(name = "Čo nakresliť",width=150)
-stan,velic = prehlad[1][1:]
-curdoc().title="Počasie (5dní)"
+# %%
+stanica_vyber = pnw.Select(options=list(StaNames),size=8,value="Martin")
 
-znazornit = pn.Column(prehlad[0],pn.Row(pn.Spacer(width=160),stan, pn.Spacer(width=130),velic),PP.view)
-znazornit.servable(target="main")
+merania_vyber = pnw.CheckBoxGroup(options=merania,value=["temperature","clouds"])
+
+
+# %%
+@pn.depends(stanica_vyber,merania_vyber)
+def view_hourly(stanica_vyber,merania_vyber):
+    fig = weather_fig_vals(weather_cached(stanica_vyber),'hourly',vals=merania_vyber)
+    return pn.pane.Plotly(fig)
+
+
+# %%
+@pn.depends(stanica_vyber,merania_vyber)
+def view_daily(stanica_vyber,merania_vyber):
+    fig = weather_fig_vals(weather_cached(stanica_vyber),'daily',vals=merania_vyber)
+    return pn.pane.Plotly(fig)
+
+
+# %%
+widgets = pn.Column(pn.Row(stanica_vyber,width=250),pn.Row(merania_vyber,width=250)) 
+
+# %%
+tabs = pn.Tabs(("Predpoveď 48 hod.",pn.Column(view_hourly)),("Predpoveď 8 dní",pn.Column(view_daily)),
+                dynamic=True,tabs_location="above")
+
+# %%
+app = pn.Row(widgets, tabs).servable()

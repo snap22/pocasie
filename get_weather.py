@@ -21,7 +21,8 @@ import pandas as pd
 
 # %% {"init_cell": true}
 Stanice = pickle.load(open('stanice.pickle', 'rb'))  # 159 stanic
-owkey = 'your_openweathermap_apikey'
+StaNames = sorted(list(Stanice.keys()))
+owkey = '2020d6eca80e4b6035b56c22f83f5222'           # key for PyCon SK 2022
 wkeys = ['clouds', 'rain', 'wind', 'humidity', 'pressure', 'temperature']
 tempkeys = ['day','night','min','max','eve', 'morn']
 owm = OWM(owkey)
@@ -78,4 +79,4 @@ def weather_data(city, exclude='minutely'):
     hourly_DF = pd.DataFrame.from_dict(hourly, orient='index', columns=wkeys)
     daily_DF = pd.DataFrame.from_dict(daily, orient='index', 
                                       columns=wkeys[:-1] + ['temp_' + p for p in tempkeys])
-    return current, hourly_DF, daily_DF
+    return {'current': current, 'hourly': hourly_DF, 'daily': daily_DF}
