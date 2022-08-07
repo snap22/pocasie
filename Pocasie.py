@@ -19,17 +19,9 @@ import panel as pn
 import panel.widgets as pnw
 pn.extension('plotly')
 from plotly.subplots import make_subplots
-from functools import lru_cache
 
-from get_weather import weather_data, Stanice, StaNames
+from get_weather import weather_data, StaNames, db
 from plot_utils import weather_fig_vals
-
-
-# %%
-@lru_cache(maxsize=20)
-def weather_cached(stanica):
-    return weather_data(stanica)
-
 
 # %%
 merania = {"Teplota": "temperature", "Tlak": "pressure", "Oblaky": "clouds", 
@@ -45,14 +37,14 @@ merania_vyber = pnw.CheckBoxGroup(options=merania,value=["temperature","clouds"]
 # %%
 @pn.depends(stanica_vyber,merania_vyber)
 def view_hourly(stanica_vyber,merania_vyber):
-    fig = weather_fig_vals(weather_cached(stanica_vyber),'hourly',vals=merania_vyber)
+    fig = weather_fig_vals(weather_data(stanica_vyber),'hourly',vals=merania_vyber)
     return pn.pane.Plotly(fig)
 
 
 # %%
 @pn.depends(stanica_vyber,merania_vyber)
 def view_daily(stanica_vyber,merania_vyber):
-    fig = weather_fig_vals(weather_cached(stanica_vyber),'daily',vals=merania_vyber)
+    fig = weather_fig_vals(weather_data(stanica_vyber),'daily',vals=merania_vyber)
     return pn.pane.Plotly(fig)
 
 

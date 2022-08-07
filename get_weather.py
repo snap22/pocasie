@@ -18,15 +18,18 @@ from pyowm.owm import OWM
 import pickle
 from datetime import datetime
 import pandas as pd
+from sqlitedict import SqliteDict
+from os import environ
 
 # %% {"init_cell": true}
 Stanice = pickle.load(open('stanice.pickle', 'rb'))  # 159 stanic
 StaNames = sorted(list(Stanice.keys()))
-owkey = '2020d6eca80e4b6035b56c22f83f5222'           # key for PyCon SK 2022
+owkey =  environ["OWM_APIKEY"]                       # key for PyCon SK 2022
 wkeys = ['clouds', 'rain', 'wind', 'humidity', 'pressure', 'temperature']
 tempkeys = ['day','night','min','max','eve', 'morn']
 owm = OWM(owkey)
 mgr = owm.weather_manager()
+db = SqliteDict("one_call.sqlite",autocommit=True)
 
 
 # %%
@@ -74,7 +77,11 @@ def get_daily(one_call):
 # %%
 def weather_data(city, exclude='minutely'):
     latc, lonc = Stanice[city]
-    one_call = mgr.one_call(lat=latc, lon=lonc, units='metric',exclude=exclude)
+    if city in db.keys():
+        one_call = db[city]
+    else:
+        one_call = mgr.one_call(lat=latc, lon=lonc, units='metric',exclude=exclude)
+        db[city] = one_call
     current, hourly, daily = get_current(one_call), get_hourly(one_call), get_daily(one_call)
     hourly_DF = pd.DataFrame.from_dict(hourly, orient='index', columns=wkeys)
     daily_DF = pd.DataFrame.from_dict(daily, orient='index', 
