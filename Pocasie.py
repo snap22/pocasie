@@ -43,26 +43,22 @@ def set_merania(*events):
     for event in events:
         if event.type == "changed" and len(event.new) > MAX_SELECTED_VALUES:
             merania_vyber.value = event.old
-
-
-# %%
-watcher = merania_vyber.param.watch(set_merania, ['value'], onlychanged=True)
+            
+watcher = merania_vyber.param.watch(set_merania, ['value'], onlychanged=True)            
 
 
 # %%
 @pn.depends(stanica_vyber,merania_vyber)
 def view_hourly(stanica_vyber,merania_vyber):
-    # print(f"Selected {stanica_vyber}, {str(merania_vyber)}")
-    fig = weather_fig_vals(weather_data(stanica_vyber),'hourly',vals=merania_vyber)
-    return fig
+    return weather_fig_vals(weather_data(stanica_vyber),
+                            'hourly', vals=merania_vyber)
 
 
 # %%
 @pn.depends(stanica_vyber,merania_vyber)
 def view_daily(stanica_vyber,merania_vyber):
-    # print(f"Selected {stanica_vyber}, {str(merania_vyber)}")
-    fig = weather_fig_vals(weather_data(stanica_vyber),'daily',vals=merania_vyber)
-    return fig
+    return weather_fig_vals(weather_data(stanica_vyber),
+                            'daily',vals=merania_vyber)
 
 
 # %%
@@ -75,5 +71,3 @@ tabs = pn.Tabs(("Predpoveď 48 hod.",pn.Column(view_hourly)),("Predpoveď 8 dní
 # %%
 app = pn.Row(widgets, tabs).servable()
 app
-
-# %%
