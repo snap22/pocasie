@@ -17,16 +17,20 @@
 # %% {"init_cell": true}
 import panel as pn
 import panel.widgets as pnw
-pn.extension('plotly')
+
 from plotly.subplots import make_subplots
 
 from get_weather import weather_data, StaNames, db
 from plot_utils import weather_fig_vals
 
+pn.extension('plotly')
+
 # %%
 merania = {"Teplota": "temperature", "Tlak": "pressure", "Oblaky": "clouds", 
            "Vietor": "wind", "Zrážky": "rain", "Vlhkosť": "humidity"}
 casy = {"Aktuálne počasie": "current","Predpoveď 48 hod.": "hourly","Predpoveď 8 dní": "daily"}
+
+MAX_SELECTED_VALUES = 3
 
 # %%
 stanica_vyber = pnw.Select(options=list(StaNames),size=8,value="Martin")
@@ -35,17 +39,30 @@ merania_vyber = pnw.CheckBoxGroup(options=merania,value=["temperature","clouds"]
 
 
 # %%
+def set_merania(*events):
+    for event in events:
+        if event.type == "changed" and len(event.new) > MAX_SELECTED_VALUES:
+            merania_vyber.value = event.old
+
+
+# %%
+watcher = merania_vyber.param.watch(set_merania, ['value'], onlychanged=True)
+
+
+# %%
 @pn.depends(stanica_vyber,merania_vyber)
 def view_hourly(stanica_vyber,merania_vyber):
+    # print(f"Selected {stanica_vyber}, {str(merania_vyber)}")
     fig = weather_fig_vals(weather_data(stanica_vyber),'hourly',vals=merania_vyber)
-    return pn.pane.Plotly(fig)
+    return fig
 
 
 # %%
 @pn.depends(stanica_vyber,merania_vyber)
 def view_daily(stanica_vyber,merania_vyber):
+    # print(f"Selected {stanica_vyber}, {str(merania_vyber)}")
     fig = weather_fig_vals(weather_data(stanica_vyber),'daily',vals=merania_vyber)
-    return pn.pane.Plotly(fig)
+    return fig
 
 
 # %%
@@ -57,3 +74,6 @@ tabs = pn.Tabs(("Predpoveď 48 hod.",pn.Column(view_hourly)),("Predpoveď 8 dní
 
 # %%
 app = pn.Row(widgets, tabs).servable()
+app
+
+# %%
