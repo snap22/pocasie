@@ -13,14 +13,16 @@
 # ---
 
 # %%
+import panel as pn
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+import folium
+from folium import plugins
+import json
 
-from get_weather import weather_data, Stanice
-w_colors = {'temperature':'red','rain':'darkblue','wind':'blue','clouds':'yellow',
-            'pressure':'darkgray','humidity':'blue'}
-nadpisy = {'temperature': 'Teplota', 'pressure': 'Tlak', 'clouds': 'Oblaky',
-           'wind': 'Vietor', 'rain': 'Zrážky', 'humidity': 'Vlhkosť'}
+from get_weather import weather_data, Stanice, wkeys, nadpisy
+#                  wkeys = ['clouds', 'rain',  'wind', 'humidity', 'pressure', 'temperature']
+w_colors = dict(zip(wkeys,['green', 'darkblue', 'blue', 'magenta', 'darkgray', 'red']))
 
 
 # %%
@@ -33,13 +35,13 @@ def weather_fig_vals(wdata, period, vals=['temperature','clouds']):
     for ind,val in enumerate(vals):
         nrow = ind + 1
         if period == 'daily' and val == 'temperature':
-            fig.add_trace(go.Scatter(x=xval,y=df['temp_day'],
+            fig.add_trace(go.Bar(x=xval,y=df['temp_day'],
                                      marker_color='green',name='day'),row=nrow,col=1)
-            fig.add_trace(go.Scatter(x=xval,y=df['temp_night'],
+            fig.add_trace(go.Bar(x=xval,y=df['temp_night'],
                                      marker_color='darkblue',name='night'),row=nrow,col=1)
-            fig.add_trace(go.Scatter(x=xval,y=df['temp_max'],
+            fig.add_trace(go.Bar(x=xval,y=df['temp_max'],
                                      marker_color='red',name='max'),row=nrow,col=1)
-            fig.add_trace(go.Scatter(x=xval,y=df['temp_min'],
+            fig.add_trace(go.Bar(x=xval,y=df['temp_min'],
                                      marker_color='blue',name='min'),row=nrow,col=1)
         else:
             plot_function = go.Bar if val == 'rain' else go.Scatter
@@ -52,3 +54,33 @@ def weather_fig_vals(wdata, period, vals=['temperature','clouds']):
                              ticklabelmode="period", row=nrow,col=1)
     fig.update_layout(height=nplots * 250,width=1000,margin=dict(t=20, b=0, r=10, l=10),showlegend=False)
     return fig
+
+
+# %%
+# folium maps
+def slovakia_map():
+    map_slovakia = folium.Map(location=[48.7, 19.6], zoom_start=8)
+
+    with open("slovakia.geojson", "r") as file:
+        geo_data = json.load(file)
+
+    style_fcn =  lambda x : {'fillColor': '#228B2255', 'color': '#228B22'}    
+    folium.GeoJson(geo_data, name="slovakia",style_function=style_fcn).add_to(map_slovakia)
+
+    polohy, popy = [], []
+    for station in Stanice:
+        lat, lon = Stanice[station]
+        poptext = f"{station}"
+        polohy.append([lat, lon])
+        popy.append(poptext)
+    
+    plugins.MarkerCluster(polohy, popups=popy).add_to(map_slovakia)
+    return map_slovakia
+
+
+# %%
+def choosen_onmap(station):
+    map = slovakia_map()
+    folium.CircleMarker(location=Stanice[station], radius=15, color='red',
+                    fill_color='red', fill=True).add_to(map)
+    return map

@@ -26,6 +26,7 @@ Stanice = pickle.load(open('stanice.pickle', 'rb'))  # 159 stanic
 StaNames = sorted(list(Stanice.keys()))
 owkey =  environ["OWM_APIKEY"]                       # key for PyCon SK 2022
 wkeys = ['clouds', 'rain', 'wind', 'humidity', 'pressure', 'temperature']
+nadpisy = dict(zip(wkeys,['Oblaky', 'Zrážky', 'Vietor', 'Vlhkosť', 'Tlak', 'Teplota']))
 tempkeys = ['day','night','min','max','eve', 'morn']
 owm = OWM(owkey)
 mgr = owm.weather_manager()
@@ -51,7 +52,11 @@ def weather_record(one_dict):
 # %%
 def get_current(one_call):
     one_dict = one_call.current.to_dict()
-    return weather_record(one_dict)
+    wd = weather_record(one_dict)
+    res = {}
+    for w_val in wd.keys():
+        res[nadpisy[w_val]] = wd[w_val]
+    return res    
 
 
 # %%
@@ -83,7 +88,8 @@ def weather_data(city, exclude='minutely'):
         one_call = mgr.one_call(lat=latc, lon=lonc, units='metric',exclude=exclude)
         db[city] = one_call
     current, hourly, daily = get_current(one_call), get_hourly(one_call), get_daily(one_call)
+    current_DF = pd.DataFrame.from_dict(current, orient='index',columns=['Aktuálne počasie'])
     hourly_DF = pd.DataFrame.from_dict(hourly, orient='index', columns=wkeys)
     daily_DF = pd.DataFrame.from_dict(daily, orient='index', 
                                       columns=wkeys[:-1] + ['temp_' + p for p in tempkeys])
-    return {'current': current, 'hourly': hourly_DF, 'daily': daily_DF}
+    return {'current': current_DF, 'hourly': hourly_DF, 'daily': daily_DF}
