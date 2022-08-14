@@ -82,7 +82,21 @@ nadpis_celkovy = pn.pane.Markdown("## Počasie na Slovensku<br/>", align='center
 tabs = pn.Tabs(("Predpoveď 48 hod.", pn.Column(view_hourly)),("Predpoveď 8 dní", pn.Column(view_daily)),
                ("Stanice na mape",pn.Column(view_map, width=1000,height=600)), dynamic=True,tabs_location="above")
 
+
+# %%
+def enable_merania(*events):
+    for event in events:
+        active_tab = event.new
+        if active_tab == 2:
+            merania_vyber.disabled = True
+        else:
+            merania_vyber.disabled = False
+
+tabs_watcher = tabs.param.watch(enable_merania, 'active', onlychanged=True)
+
 # %%
 weather_info = pn.Column(nadpis_celkovy,tabs)
 app = pn.Column(pn.Row(pn.Spacer(height=20)),pn.Row(widgets, pn.Spacer(width=20),weather_info)).servable(title="Počasie na Slovensku")
 app
+
+# %%
