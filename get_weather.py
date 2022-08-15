@@ -20,6 +20,7 @@ from datetime import datetime
 import pandas as pd
 from sqlitedict import SqliteDict
 from os import environ
+from time import time
 
 # %% {"init_cell": true}
 Stanice = pickle.load(open('stanice.pickle', 'rb'))  # 159 stanic
@@ -27,10 +28,10 @@ StaNames = sorted(list(Stanice.keys()))
 owkey =  environ["OWM_APIKEY"]                       # key for PyCon SK 2022
 wkeys = ['clouds', 'rain', 'wind', 'humidity', 'pressure', 'temperature']
 nadpisy = dict(zip(wkeys,['Oblaky', 'Zrážky', 'Vietor', 'Vlhkosť', 'Tlak', 'Teplota']))
-tempkeys = ['day','night','min','max','eve', 'morn']
+tempkeys = ['day', 'night', 'min', 'max', 'eve', 'morn']
 owm = OWM(owkey)
 mgr = owm.weather_manager()
-db = SqliteDict("one_call.sqlite",autocommit=True)
+db = SqliteDict("one_call.sqlite", autocommit=True, tablename='weather')
 
 
 # %%
@@ -56,6 +57,7 @@ def get_current(one_call):
     res = {}
     for w_val in wd.keys():
         res[nadpisy[w_val]] = wd[w_val]
+    res['Čas'] = datetime.fromtimestamp(one_dict['reference_time']).strftime("%-d.%b %H:%M") 
     return res    
 
 
@@ -80,13 +82,21 @@ def get_daily(one_call):
 
 
 # %%
-def weather_data(city, exclude='minutely'):
+def make_one_call(city,latc, lonc, exclude='minutely'):
+    one_call = mgr.one_call(lat=latc, lon=lonc, units='metric',exclude=exclude)
+    ref_time = one_call.current.ref_time
+    db[city] = (ref_time, one_call)    
+    return one_call
+
+
+def weather_data(city, exclude='minutely', autoupdate=60*60*4):
     latc, lonc = Stanice[city]
     if city in db.keys():
-        one_call = db[city]
+        ref_time, one_call = db[city]
+        if (int(time()) - ref_time > autoupdate):
+            one_call = make_one_call(city, latc, lonc)
     else:
-        one_call = mgr.one_call(lat=latc, lon=lonc, units='metric',exclude=exclude)
-        db[city] = one_call
+        one_call = make_one_call(city, latc, lonc)
     current, hourly, daily = get_current(one_call), get_hourly(one_call), get_daily(one_call)
     current_DF = pd.DataFrame.from_dict(current, orient='index',columns=['Aktuálne počasie'])
     hourly_DF = pd.DataFrame.from_dict(hourly, orient='index', columns=wkeys)

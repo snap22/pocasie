@@ -20,7 +20,7 @@ import panel.widgets as pnw
 
 from plotly.subplots import make_subplots
 
-from get_weather import weather_data, StaNames, db
+from get_weather import weather_data, StaNames
 from plot_utils import weather_fig_vals, choosen_onmap
 
 pn.extension('plotly')
@@ -28,7 +28,6 @@ pn.extension('plotly')
 # %%
 merania = {"Teplota": "temperature", "Tlak": "pressure", "Oblaky": "clouds", 
            "Vietor": "wind", "Zrážky": "rain", "Vlhkosť": "humidity"}
-casy = {"Aktuálne počasie": "current","Predpoveď 48 hod.": "hourly","Predpoveď 8 dní": "daily"}
 
 MAX_SELECTED_VALUES = 3
 
@@ -51,52 +50,55 @@ watcher = merania_vyber.param.watch(set_merania, ['value'], onlychanged=True)
 def view_current(stanica_vyber):
     float_fmt = lambda s: '%.1f' %s
     df = weather_data(stanica_vyber)['current']
-    return pn.pane.DataFrame(df,justify='center',width=240,float_format=float_fmt)
+    return pn.pane.DataFrame(df, justify='center', width=240, float_format=float_fmt)
 
 
 # %%
 @pn.depends(stanica_vyber,merania_vyber)
 def view_hourly(stanica_vyber,merania_vyber):
-    fig = weather_fig_vals(weather_data(stanica_vyber),'hourly',vals=merania_vyber)
+    fig = weather_fig_vals(weather_data(stanica_vyber), 'hourly', vals=merania_vyber)
     return fig
 
 
 # %%
 @pn.depends(stanica_vyber,merania_vyber)
 def view_daily(stanica_vyber,merania_vyber):
-    fig = weather_fig_vals(weather_data(stanica_vyber),'daily',vals=merania_vyber)
+    fig = weather_fig_vals(weather_data(stanica_vyber), 'daily', vals=merania_vyber)
     return fig
 
 
 # %%
 @pn.depends(stanica_vyber)
 def view_map(stanica_vyber):
-    return pn.pane.plot.Folium(choosen_onmap(stanica_vyber),width=1000,height=600)
+    return pn.pane.plot.Folium(choosen_onmap(stanica_vyber), width=1000, height=600)
 
 
 # %%
-widgets = pn.Column(pn.Row(stanica_vyber,width=250),pn.Row(merania_vyber,width=250,align='center'),pn.Row(view_current),align='center')
+global widgets
+
+merania_row = pn.Row(merania_vyber,width=250,align='center')
+widgets = pn.Column(pn.Row(stanica_vyber,width=250), merania_row, pn.Row(view_current), align='center')
 nadpis_celkovy = pn.pane.Markdown("## Počasie na Slovensku<br/>", align='center')
 
 # %%
-tabs = pn.Tabs(("Predpoveď 48 hod.", pn.Column(view_hourly)),("Predpoveď 8 dní", pn.Column(view_daily)),
-               ("Stanice na mape",pn.Column(view_map, width=1000,height=600)), dynamic=True,tabs_location="above")
+tabs = pn.Tabs(("Predpoveď 48 hod.", pn.Column(view_hourly)), ("Predpoveď 8 dní", pn.Column(view_daily)),
+               ("Stanice na mape", pn.Column(view_map, width=1000,height=600)), dynamic=True, tabs_location="above")
 
 
 # %%
 def enable_merania(*events):
+    global widgets
     for event in events:
         active_tab = event.new
         if active_tab == 2:
-            merania_vyber.disabled = True
+            widgets.objects[1][0] = pn.Row(pn.pane.Markdown("<center><h3>Nemeriame, ukazujeme</h3></center>",
+                                                            width=240, height=110, align="center"))
         else:
-            merania_vyber.disabled = False
+            widgets.objects[1][0] = pn.Row(merania_vyber, width=250, align='center')
 
 tabs_watcher = tabs.param.watch(enable_merania, 'active', onlychanged=True)
 
 # %%
 weather_info = pn.Column(nadpis_celkovy,tabs)
-app = pn.Column(pn.Row(pn.Spacer(height=20)),pn.Row(widgets, pn.Spacer(width=20),weather_info)).servable(title="Počasie na Slovensku")
+app = pn.Column(pn.Row(widgets, pn.Spacer(width=20), weather_info)).servable(title="Počasie na Slovensku")
 app
-
-# %%
